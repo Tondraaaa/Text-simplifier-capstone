@@ -48,7 +48,7 @@ st.markdown("<h4>Enter Academic Text</h4>", unsafe_allow_html=True)
 text_input = st.text_area(
     "Enter academic text here",
     height=180,
-    label_visibility="visible",
+    label_visibility="visible"
 )
 
 
@@ -73,7 +73,7 @@ def simplify_text(text: str):
     )
     summary = summary_result[0]["summary_text"]
 
-    # Step 2 – rewrite summary into plain English
+    # Step 2 – rewrite summary in plain English
     instruction = (
         "Rewrite the following summary in clear, plain English for a general audience. "
         "Use short sentences, simple vocabulary, and make it easy to understand."
