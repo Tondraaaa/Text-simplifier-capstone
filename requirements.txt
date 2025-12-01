@@ -1,0 +1,5 @@
+streamlit>=1.37
+transformers>=4.40
+torch>=2.0
+textstat>=0.7
+sentencepiece>=0.1.99
