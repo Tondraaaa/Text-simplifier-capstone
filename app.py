@@ -7,9 +7,17 @@ import textstat
 # ----------------------------
 @st.cache_resource
 def load_models():
-    summarizer = pipeline("summarization", model="facebook/bart-large-cnn")
-    rewriter = pipeline("text2text-generation", model="google/flan-t5-large")
+    # Smaller, faster models for Streamlit Cloud
+    summarizer = pipeline(
+        "summarization",
+        model="sshleifer/distilbart-cnn-12-6"
+    )
+    rewriter = pipeline(
+        "text2text-generation",
+        model="google/flan-t5-base"
+    )
     return summarizer, rewriter
+
 
 summarizer, rewriter = load_models()
 
@@ -123,3 +131,4 @@ st.caption(
     "Developed by Shatondra Asor-Sallaah, Tamika Mosley, and Aprylee Brown | "
     "LSIS 5460 AI Capstone | Accessibility Prototype v3.0"
 )
+
