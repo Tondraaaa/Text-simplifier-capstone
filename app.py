@@ -3,7 +3,7 @@ from transformers import pipeline
 import textstat
 
 # ----------------------------
-# Load smaller, cloud friendly models
+# Load smaller, cloud-friendly models
 # ----------------------------
 @st.cache_resource
 def load_models():
@@ -12,7 +12,7 @@ def load_models():
         "summarization",
         model="sshleifer/distilbart-cnn-12-6"
     )
-    # FLAN T5 base is much smaller than flan t5 large
+    # FLAN-T5 base is much smaller than flan-t5-large
     rewriter = pipeline(
         "text2text-generation",
         model="google/flan-t5-base"
@@ -28,7 +28,7 @@ st.set_page_config(page_title="AI Text Simplifier Prototype", layout="centered")
 st.title("AI Text Simplifier Prototype")
 
 st.write(
-    "This working prototype rewrites complex academic text into plain English using a two step process:"
+    "This working prototype rewrites complex academic text into plain English using a two-step process:"
 )
 
 st.markdown(
@@ -45,11 +45,15 @@ st.markdown(
 # User input
 # ----------------------------
 st.markdown("<h4>Enter Academic Text</h4>", unsafe_allow_html=True)
-text_input = st.text_area("Enter academic text here", height=180)
+text_input = st.text_area(
+    "Enter academic text here",
+    height=180,
+    label_visibility="visible",
+)
 
 
 # ----------------------------
-# Two step simplification function
+# Two-step simplification function
 # ----------------------------
 def simplify_text(text: str):
     text = text.strip()
@@ -59,7 +63,7 @@ def simplify_text(text: str):
     # Original readability
     original_score = textstat.flesch_reading_ease(text)
 
-    # Step 1: summarize
+    # Step 1 – summarize
     summary_result = st.session_state["summarizer"](
         text,
         max_length=120,
@@ -69,7 +73,7 @@ def simplify_text(text: str):
     )
     summary = summary_result[0]["summary_text"]
 
-    # Step 2: rewrite summary in plain English
+    # Step 2 – rewrite summary into plain English
     instruction = (
         "Rewrite the following summary in clear, plain English for a general audience. "
         "Use short sentences, simple vocabulary, and make it easy to understand."
@@ -92,14 +96,18 @@ def simplify_text(text: str):
 # Run simplification
 # ----------------------------
 if st.button("Simplify"):
-    # Lazy load models only when needed
+    # Lazy-load models only when needed
     if "summarizer" not in st.session_state or "rewriter" not in st.session_state:
-        with st.spinner("Loading language models. This may take a moment the first time..."):
+        with st.spinner(
+            "Loading language models. This may take a moment the first time..."
+        ):
             summarizer, rewriter = load_models()
             st.session_state["summarizer"] = summarizer
             st.session_state["rewriter"] = rewriter
 
-    simplified_text, original_score, simplified_score, summary = simplify_text(text_input)
+    simplified_text, original_score, simplified_score, summary = simplify_text(
+        text_input
+    )
 
     st.markdown("<h4>Simplified Output</h4>", unsafe_allow_html=True)
     st.write(simplified_text)
@@ -115,9 +123,13 @@ if st.button("Simplify"):
     if simplified_score > original_score + 10:
         st.success("✅ Readability improved significantly!")
     elif simplified_score > original_score:
-        st.info("ℹ️ Readability improved slightly. Try a longer or more complex input for stronger results.")
+        st.info(
+            "ℹ️ Readability improved slightly. Try a longer or more complex input for stronger results."
+        )
     else:
-        st.warning("⚠️ The simplified version may still be complex. Try another phrasing or shorter sections.")
+        st.warning(
+            "⚠️ The simplified version may still be complex. Try another phrasing or shorter sections."
+        )
 
     # Download button
     results_text = (
@@ -131,7 +143,7 @@ if st.button("Simplify"):
         label="Download results as .txt",
         data=results_text,
         file_name="simplified_results.txt",
-        mime="text/plain"
+        mime="text/plain",
     )
 
 # ----------------------------
@@ -142,4 +154,3 @@ st.caption(
     "Developed by Shatondra Asor-Sallaah, Tamika Mosley, and Aprylee Brown | "
     "LSIS 5460 AI Capstone | Accessibility Prototype v3.0"
 )
-
