@@ -3,15 +3,16 @@ from transformers import pipeline
 import textstat
 
 # ----------------------------
-# Load both models
+# Load smaller, cloud-friendly models
 # ----------------------------
 @st.cache_resource
 def load_models():
-    # Smaller, faster models for Streamlit Cloud
+    # DistilBART is a smaller version of BART CNN
     summarizer = pipeline(
         "summarization",
         model="sshleifer/distilbart-cnn-12-6"
     )
+    # FLAN-T5 base is much smaller than flan-t5-large
     rewriter = pipeline(
         "text2text-generation",
         model="google/flan-t5-base"
@@ -51,19 +52,23 @@ text_input = st.text_area("", height=180)
 # ----------------------------
 # Two-Step Simplification Function
 # ----------------------------
-def simplify_text(text):
-    if not text.strip():
-        return "Please enter some text to simplify.", 0, 0, ""
+def simplify_text(text: str):
+    text = text.strip()
+    if not text:
+        return "Please enter some text to simplify.", 0.0, 0.0, ""
 
+    # Original readability
     original_score = textstat.flesch_reading_ease(text)
 
     # Step 1 – Summarize
-    summary = summarizer(
+    summary_result = summarizer(
         text,
         max_length=120,
-        min_length=40,
-        do_sample=False
-    )[0]["summary_text"]
+        min_length=30,
+        do_sample=False,
+        truncation=True,
+    )
+    summary = summary_result[0]["summary_text"]
 
     # Step 2 – Rewrite summary into plain English
     instruction = (
@@ -71,11 +76,13 @@ def simplify_text(text):
         "Use short sentences, simple vocabulary, and make it easy to understand."
     )
     prompt = f"{instruction}\n\n{summary}"
-    simplified_output = rewriter(
+
+    rewrite_result = rewriter(
         prompt,
         max_length=256,
-        do_sample=False
-    )[0]["generated_text"].strip()
+        do_sample=False,
+    )
+    simplified_output = rewrite_result[0]["generated_text"].strip()
 
     simplified_score = textstat.flesch_reading_ease(simplified_output)
 
@@ -90,14 +97,15 @@ if st.button("Simplify"):
     st.markdown("<h4>Simplified Output</h4>", unsafe_allow_html=True)
     st.write(simplified_text)
 
-    with st.expander("View Intermediate Summary (Step 1)"):
-        st.write(summary)
+    if summary:
+        with st.expander("View Intermediate Summary (Step 1)"):
+            st.write(summary)
 
     st.markdown(f"**Original Flesch Reading Ease:** {original_score:.2f}")
     st.markdown(f"**Simplified Flesch Reading Ease:** {simplified_score:.2f}")
 
     # ----------------------------
-    # Readability Feedback Boxes (with icons)
+    # Readability Feedback Boxes
     # ----------------------------
     if simplified_score > original_score + 10:
         st.success("✅ Readability improved significantly!")
@@ -131,4 +139,3 @@ st.caption(
     "Developed by Shatondra Asor-Sallaah, Tamika Mosley, and Aprylee Brown | "
     "LSIS 5460 AI Capstone | Accessibility Prototype v3.0"
 )
-
