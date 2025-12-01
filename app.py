@@ -45,7 +45,7 @@ st.markdown(
 # User input
 # ----------------------------
 st.markdown("<h4>Enter Academic Text</h4>", unsafe_allow_html=True)
-text_input = st.text_area("", height=180)
+text_input = st.text_area("Enter academic text here", height=180)
 
 
 # ----------------------------
@@ -142,3 +142,4 @@ st.caption(
     "Developed by Shatondra Asor-Sallaah, Tamika Mosley, and Aprylee Brown | "
     "LSIS 5460 AI Capstone | Accessibility Prototype v3.0"
 )
+
