@@ -3,18 +3,25 @@ from transformers import pipeline
 import textstat
 
 # ----------------------------
-# Load both models
+# Load smaller, cloud-friendly models
 # ----------------------------
 @st.cache_resource
 def load_models():
-    summarizer = pipeline("summarization", model="facebook/bart-large-cnn")
-    rewriter = pipeline("text2text-generation", model="google/flan-t5-large")
+    # DistilBART is a smaller version of BART CNN
+    summarizer = pipeline(
+        "summarization",
+        model="sshleifer/distilbart-cnn-12-6"
+    )
+    # FLAN-T5 base is much smaller than flan-t5-large
+    rewriter = pipeline(
+        "text2text-generation",
+        model="google/flan-t5-base"
+    )
     return summarizer, rewriter
 
-summarizer, rewriter = load_models()
 
 # ----------------------------
-# Streamlit UI Setup
+# Streamlit UI setup
 # ----------------------------
 st.set_page_config(page_title="AI Text Simplifier Prototype", layout="centered")
 
@@ -35,72 +42,95 @@ st.markdown(
 )
 
 # ----------------------------
-# User Input
+# User input
 # ----------------------------
 st.markdown("<h4>Enter Academic Text</h4>", unsafe_allow_html=True)
-text_input = st.text_area("", height=180)
+text_input = st.text_area(
+    "Enter academic text here",
+    height=180,
+    label_visibility="visible"
+)
 
 # ----------------------------
-# Two-Step Simplification Function
+# Two-step simplification function
 # ----------------------------
-def simplify_text(text):
-    if not text.strip():
-        return "Please enter some text to simplify.", 0, 0, ""
+def simplify_text(text: str):
+    text = text.strip()
+    if not text:
+        return "Please enter some text to simplify.", 0.0, 0.0, ""
 
+    # Original readability
     original_score = textstat.flesch_reading_ease(text)
 
-    # Step 1 – Summarize
-    summary = summarizer(
+    # Step 1 – summarize
+    summary_result = st.session_state["summarizer"](
         text,
         max_length=120,
-        min_length=40,
-        do_sample=False
-    )[0]["summary_text"]
+        min_length=30,
+        do_sample=False,
+        truncation=True,
+    )
+    summary = summary_result[0]["summary_text"]
 
-    # Step 2 – Rewrite summary into plain English
+    # Step 2 – rewrite summary in plain English
     instruction = (
         "Rewrite the following summary in clear, plain English for a general audience. "
         "Use short sentences, simple vocabulary, and make it easy to understand."
     )
     prompt = f"{instruction}\n\n{summary}"
-    simplified_output = rewriter(
+
+    rewrite_result = st.session_state["rewriter"](
         prompt,
         max_length=256,
-        do_sample=False
-    )[0]["generated_text"].strip()
+        do_sample=False,
+    )
+    simplified_output = rewrite_result[0]["generated_text"].strip()
 
     simplified_score = textstat.flesch_reading_ease(simplified_output)
 
     return simplified_output, original_score, simplified_score, summary
 
+
 # ----------------------------
-# Run Simplification
+# Run simplification
 # ----------------------------
 if st.button("Simplify"):
-    simplified_text, original_score, simplified_score, summary = simplify_text(text_input)
+    # Lazy load models only when needed
+    if "summarizer" not in st.session_state or "rewriter" not in st.session_state:
+        with st.spinner(
+            "Loading language models. This may take a moment the first time..."
+        ):
+            summarizer, rewriter = load_models()
+            st.session_state["summarizer"] = summarizer
+            st.session_state["rewriter"] = rewriter
+
+    simplified_text, original_score, simplified_score, summary = simplify_text(
+        text_input
+    )
 
     st.markdown("<h4>Simplified Output</h4>", unsafe_allow_html=True)
     st.write(simplified_text)
 
-    with st.expander("View Intermediate Summary (Step 1)"):
-        st.write(summary)
+    if summary:
+        with st.expander("View Intermediate Summary (Step 1)"):
+            st.write(summary)
 
     st.markdown(f"**Original Flesch Reading Ease:** {original_score:.2f}")
     st.markdown(f"**Simplified Flesch Reading Ease:** {simplified_score:.2f}")
 
-    # ----------------------------
-    # Readability Feedback Boxes (with icons)
-    # ----------------------------
+    # Readability feedback
     if simplified_score > original_score + 10:
         st.success("✅ Readability improved significantly!")
     elif simplified_score > original_score:
-        st.info("ℹ️ Readability improved slightly. Try a longer or more complex input for stronger results.")
+        st.info(
+            "ℹ️ Readability improved slightly. Try a longer or more complex input for stronger results."
+        )
     else:
-        st.warning("⚠️ The simplified version may still be complex. Try another phrasing or shorter sections.")
+        st.warning(
+            "⚠️ The simplified version may still be complex. Try another phrasing or shorter sections."
+        )
 
-    # ----------------------------
-    # Download Results Button
-    # ----------------------------
+    # Download button
     results_text = (
         f"Simplified Output:\n{simplified_text}\n\n"
         f"Intermediate Summary:\n{summary}\n\n"
@@ -112,7 +142,7 @@ if st.button("Simplify"):
         label="Download results as .txt",
         data=results_text,
         file_name="simplified_results.txt",
-        mime="text/plain"
+        mime="text/plain",
     )
 
 # ----------------------------
